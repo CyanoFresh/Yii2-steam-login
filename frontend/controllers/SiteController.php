@@ -1,6 +1,9 @@
 <?php
 namespace frontend\controllers;
 
+use common\models\User;
+use nodge\eauth\ErrorException;
+use nodge\eauth\openid\ControllerBehavior;
 use Yii;
 use common\models\LoginForm;
 use frontend\models\PasswordResetRequestForm;
@@ -46,6 +49,10 @@ class SiteController extends Controller
                     'logout' => ['post'],
                 ],
             ],
+            'eauth' => [
+                'class' => ControllerBehavior::className(),
+                'only' => ['login'],
+            ],
         ];
     }
 
@@ -82,18 +89,39 @@ class SiteController extends Controller
      */
     public function actionLogin()
     {
-        if (!\Yii::$app->user->isGuest) {
-            return $this->goHome();
+        /** @var $eauth \nodge\eauth\ServiceBase */
+        $eauth = Yii::$app->get('eauth')->getIdentity('steam');
+        $eauth->setRedirectUrl(Yii::$app->getUser()->getReturnUrl());
+        $eauth->setCancelUrl(Yii::$app->getUrlManager()->createAbsoluteUrl('site/login'));
+
+        try {
+            if ($eauth->authenticate()) {
+
+                $identity = User::findByEAuth($eauth);
+                Yii::$app->getUser()->login($identity);
+
+                $eauth->redirect();
+            } else {
+                $eauth->cancel();
+            }
+        } catch (ErrorException $e) {
+            Yii::$app->getSession()->setFlash('error', 'EAuthException: ' . $e->getMessage());
+
+            $eauth->redirect($eauth->getCancelUrl());
         }
 
-        $model = new LoginForm();
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
-        } else {
-            return $this->render('login', [
-                'model' => $model,
-            ]);
-        }
+//        if (!\Yii::$app->user->isGuest) {
+//            return $this->goHome();
+//        }
+//
+//        $model = new LoginForm();
+//        if ($model->load(Yii::$app->request->post()) && $model->login()) {
+//            return $this->goBack();
+//        } else {
+//            return $this->render('login', [
+//                'model' => $model,
+//            ]);
+//        }
     }
 
     /**
@@ -118,7 +146,8 @@ class SiteController extends Controller
         $model = new ContactForm();
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
             if ($model->sendEmail(Yii::$app->params['adminEmail'])) {
-                Yii::$app->session->setFlash('success', 'Thank you for contacting us. We will respond to you as soon as possible.');
+                Yii::$app->session->setFlash('success',
+                    'Thank you for contacting us. We will respond to you as soon as possible.');
             } else {
                 Yii::$app->session->setFlash('error', 'There was an error sending email.');
             }

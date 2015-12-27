@@ -1,6 +1,7 @@
 <?php
 namespace common\models;
 
+use nodge\eauth\ErrorException;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\behaviors\TimestampBehavior;
@@ -25,6 +26,11 @@ class User extends ActiveRecord implements IdentityInterface
 {
     const STATUS_DELETED = 0;
     const STATUS_ACTIVE = 10;
+
+    /**
+     * @var array EAuth attributes
+     */
+    public $profile;
 
     /**
      * @inheritdoc
@@ -60,7 +66,34 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function findIdentity($id)
     {
+        if (Yii::$app->getSession()->has('user-' . $id)) {
+            return new self(Yii::$app->getSession()->get('user-' . $id));
+        }
+
         return static::findOne(['id' => $id, 'status' => self::STATUS_ACTIVE]);
+    }
+
+    /**
+     * @param \nodge\eauth\ServiceBase $service
+     * @return User
+     * @throws ErrorException
+     */
+    public static function findByEAuth($service)
+    {
+        if (!$service->getIsAuthenticated()) {
+            throw new ErrorException('EAuth user should be authenticated before creating identity.');
+        }
+
+        $id = $service->getServiceName() . '-' . $service->getId();
+        $attributes = [
+            'id' => $id,
+            'username' => $service->getAttribute('name'),
+            'auth_key' => md5($id),
+            'profile' => $service->getAttributes(),
+        ];
+        $attributes['profile']['service'] = $service->getServiceName();
+        Yii::$app->getSession()->set('user-' . $id, $attributes);
+        return new self($attributes);
     }
 
     /**
@@ -112,7 +145,7 @@ class User extends ActiveRecord implements IdentityInterface
             return false;
         }
 
-        $timestamp = (int) substr($token, strrpos($token, '_') + 1);
+        $timestamp = (int)substr($token, strrpos($token, '_') + 1);
         $expire = Yii::$app->params['user.passwordResetTokenExpire'];
         return $timestamp + $expire >= time();
     }

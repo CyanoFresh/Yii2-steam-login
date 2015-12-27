@@ -61,6 +61,7 @@ AppAsset::register($this);
             'links' => isset($this->params['breadcrumbs']) ? $this->params['breadcrumbs'] : [],
         ]) ?>
         <?= Alert::widget() ?>
+        <?php \yii\helpers\VarDumper::dump(Yii::$app->getUser()->getIdentity(), 10, true) ?>
         <?= $content ?>
     </div>
 </div>
