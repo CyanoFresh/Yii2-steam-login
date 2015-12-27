@@ -9,7 +9,7 @@ return [
             'class' => 'nodge\eauth\EAuth',
             'services' => [
                 'steam' => [
-                    'class' => 'nodge\eauth\services\SteamOpenIDService',
+                    'class' => 'common\components\SteamOpenIDService',
                 ],
             ],
         ],
