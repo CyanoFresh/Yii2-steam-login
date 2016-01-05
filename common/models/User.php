@@ -12,24 +12,21 @@ use yii\web\IdentityInterface;
  * User model
  *
  * @property integer $id
+ * @property string $steamid
  * @property string $username
  * @property string $auth_key
+ * @property string $profile_url
+ * @property string $avatar
+ * @property string $avatar_md
+ * @property string $avatar_lg
  * @property integer $status
  * @property integer $created_at
  * @property integer $updated_at
- * @property string $password write-only password
  */
 class User extends ActiveRecord implements IdentityInterface
 {
     const STATUS_DELETED = 0;
     const STATUS_ACTIVE = 10;
-
-//    public $steamid;
-//    public $username;
-//    public $profile_url;
-//    public $avatar;
-//    public $avatar_md;
-//    public $avatar_lg;
 
     /**
      * @inheritdoc
